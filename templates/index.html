@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲平台</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem 0;
+            background: linear-gradient(to right, #2c3e50, #4ca1af);
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 1rem;
+        }
+
+        .game-card {
+            background-color: #2d2d2d;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #3d3d3d;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            border-color: #4ca1af;
+        }
+
+        .game-image {
+            width: 100%;
+            height: 200px;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 4rem;
+            color: #555;
+            background: linear-gradient(45deg, #333 25%, #444 25%, #444 50%, #333 50%, #333 75%, #444 75%, #444 100%);
+            background-size: 20px 20px;
+        }
+
+        .game-info {
+            padding: 1.5rem;
+        }
+
+        .game-title {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem 0;
+            color: #4ca1af;
+        }
+
+        .game-description {
+            font-size: 1rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+
+        .coming-soon {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .coming-soon:hover {
+            transform: none;
+            box-shadow: none;
+            border-color: #3d3d3d;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 1rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>My Game Platform</h1>
+    </header>
+
+    <div class="container">
+        <!-- 打磚塊遊戲卡片 -->
+        <a href="/game_block" class="game-card">
+            <div class="game-image">
+                🧱
+            </div>
+            <div class="game-info">
+                <h2 class="game-title">打磚塊 (Block Breaker)</h2>
+                <p class="game-description">經典的打磚塊遊戲。控制擋板，擊碎所有磚塊挑戰高分！</p>
+            </div>
+        </a>
+
+        <!-- 其他遊戲範例 (Coming Soon) -->
+        <div class="game-card coming-soon">
+            <div class="game-image">
+                👾
+            </div>
+            <div class="game-info">
+                <h2 class="game-title">太空侵略者</h2>
+                <p class="game-description">即將推出：抵抗外星人入侵，保衛地球！</p>
+            </div>
+        </div>
+
+        <div class="game-card coming-soon">
+            <div class="game-image">
+                🐍
+            </div>
+            <div class="game-info">
+                <h2 class="game-title">貪食蛇</h2>
+                <p class="game-description">即將推出：經典貪食蛇遊戲，看你能吃多長！</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2025 ME2025_Final_Project
+    </footer>
+
+</body>
+
+</html>
