@@ -44,7 +44,8 @@ def leaderboard():
 # 遊戲頁面
 # -----------------------------
 @app.route("/game")
-def game():
+def game(gid):
+    
     return render_template("game.html")
 
 # -----------------------------
@@ -65,6 +66,13 @@ def save_score():
 @app.route("/game_block")
 def game_block():
     return render_template("block.html")
+
+# -----------------------------
+# 彈幕遊戲
+# -----------------------------
+@app.route("/game_Bullet_Hell")
+def game_Bullet_Hell():
+    return render_template("Bullet_Hell.html")
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
