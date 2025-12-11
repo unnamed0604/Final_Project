@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
+import database
 
 app = Flask(__name__)
 app.secret_key = "your-secret-key"
@@ -16,17 +17,37 @@ def index():
 # -----------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    error = None
     if request.method == "POST":
-        # 處理登入
-        pass
-    return render_template("login.html")
+        username = request.form["username"]
+        password = request.form["password"]
+        
+        user = database.verify_user(username, password)
+        if user:
+            session["user"] = user
+            return redirect("/")
+        else:
+            error = "Invalid username or password"
+            
+    return render_template("login.html", error=error)
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    error = None
     if request.method == "POST":
-        # 處理註冊
-        pass
-    return render_template("register.html")
+        username = request.form["username"]
+        password = request.form["password"]
+        confirm = request.form["confirm_password"]
+        
+        if password != confirm:
+            error = "Passwords do not match"
+        else:
+            if database.add_user(username, password):
+                return redirect("/login")
+            else:
+                error = "Username already exists"
+                
+    return render_template("register.html", error=error)
 
 @app.route("/logout")
 def logout():
@@ -53,12 +74,24 @@ def game(gid):
 # -----------------------------
 @app.route("/api/score", methods=["POST"])
 def save_score():
+    if "user" not in session:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        
     data = request.json
-    game_id = data["game_id"]
-    score = data["score"]
-    user = session["user"]
-    # TODO: save into DB
-    return {"status": "success"}
+    game_id = data.get("game_id")
+    score = data.get("score")
+    user_id = session["user"]["id"]
+    
+    if game_id and score is not None:
+        database.add_score(user_id, game_id, score)
+        return jsonify({"status": "success"})
+    
+    return jsonify({"status": "error", "message": "Invalid data"}), 400
+
+@app.route("/api/leaderboard/<game_name>")
+def get_leaderboard(game_name):
+    scores = database.get_top_scores(game_name)
+    return jsonify(scores)
 
 # -----------------------------
 # 打磚塊遊戲

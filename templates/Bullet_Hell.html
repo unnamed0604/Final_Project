@@ -5,87 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>彈幕生存遊戲</title>
+    <link rel="stylesheet" href="/static/css/style.css">
     <style>
+        /* Game Specific */
         body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #111;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            flex-direction: column;
-            overflow: hidden;
-            /* 防止捲動 */
+            /* Enable flex layout from style.css but allow overflow if screen is small */
+            overflow: auto;
+            justify-content: flex-start;
+            /* Start from top to prevent cutting off on small screens */
+            padding-top: 20px;
         }
 
         #game-container {
-            position: relative;
-            box-shadow: 0 0 30px rgba(255, 50, 50, 0.2);
-            border: 2px solid #555;
-        }
-
-        canvas {
-            display: block;
-            background-color: #222;
-        }
-
-        .ui-overlay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            pointer-events: none;
-            font-size: 24px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 2px 2px 4px #000;
-        }
-
-        .timer {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 2px 2px 4px #000;
-        }
-
-        .controls {
-            margin-top: 20px;
-            text-align: center;
-            color: #aaa;
-            z-index: 10;
-        }
-
-        button {
-            background-color: #e74c3c;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #c0392b;
-        }
-
-        .back-btn {
-            background-color: #95a5a6;
-            margin-right: 10px;
-        }
-
-        .back-btn:hover {
-            background-color: #7f8c8d;
+            /* Constrain container size */
+            width: 80vh;
+            height: 80vh;
+            max-width: 800px;
+            max-height: 800px;
+            aspect-ratio: 1 / 1;
         }
     </style>
 </head>
@@ -93,19 +30,21 @@
 <body>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="800"></canvas>
-        <div class="ui-overlay">
-            分數: <span id="score">0</span>
+        <div class="hud-panel">
+            <div class="hud-item hud-score">SCORE: <span id="score">0</span></div>
+            <div class="hud-item hud-time">TIME: <span id="time">00:00</span></div>
         </div>
-        <div class="timer">
-            存活: <span id="time">00:00</span>
-        </div>
+        <!-- Canvas resize logic inside JS usually handles full container size, but CSS helps -->
+        <canvas id="gameCanvas" width="800" height="800"
+            style="width: 100%; height: 100%; object-fit: contain;"></canvas>
     </div>
 
-    <div class="controls">
-        <p>控制：使用方向鍵移動笑臉，躲避四周襲來的彈幕！</p>
-        <a href="/"><button class="back-btn">回到首頁</button></a>
-        <button id="restartBtn" onclick="location.reload()">重新開始</button>
+    <div class="controls-panel">
+        <p class="controls-description">控制：使用方向鍵移動笑臉，躲避四周襲來的彈幕！</p>
+        <div class="button-group">
+            <a href="/"><button class="back-btn btn-cyber-red">回到首頁</button></a>
+            <button id="restartBtn" onclick="location.reload()" class="btn-cyber-green">重新開始</button>
+        </div>
     </div>
 
     <script src="/static/js/Bullet_Hell.js"></script>

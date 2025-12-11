@@ -5,131 +5,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finger Panic</title>
+    <title>Finger Panic</title>
+    <link rel="stylesheet" href="/static/css/style.css">
     <style>
+        /* Game Specific Styles */
         body {
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #222;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            flex-direction: column;
             user-select: none;
-            /* Prevent text selection */
         }
 
         #game-container {
-            text-align: center;
+            /* Fix layout: Vertical stack */
+            flex-direction: column;
+            width: 800px;
+            max-width: 90%;
             padding: 40px;
-            background-color: #333;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            width: 80%;
-            max-width: 600px;
         }
 
-        h1 {
-            color: #e74c3c;
-            /* Red for Panic */
-            margin-bottom: 30px;
-            font-style: italic;
+        #target-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 80px;
+            font-weight: bold;
+            color: var(--primary-cyan);
+            margin: 20px 0;
+            display: block;
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
         }
 
         .status-box {
             font-size: 24px;
             margin-bottom: 20px;
             min-height: 50px;
-        }
-
-        #target-display {
-            font-size: 80px;
-            font-weight: bold;
-            color: #ffeb3b;
-            margin: 20px 0;
-            display: block;
-            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            font-family: 'Rajdhani', sans-serif;
         }
 
         .key-list {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
+            gap: 15px;
             margin-top: 20px;
             min-height: 60px;
         }
 
         .key {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--primary-cyan);
+            padding: 15px 20px;
+            border-radius: 8px;
             font-weight: bold;
-            font-size: 20px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            border: 2px solid #45a049;
-        }
-
-        .controls {
-            margin-top: 40px;
-        }
-
-        button {
-            background-color: #4CAF50;
-            /* Green for Restart/Start */
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            font-size: 18px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .back-btn {
-            background-color: #f44336;
-            /* Red for Back */
-            margin-right: 15px;
-        }
-
-        .back-btn:hover {
-            background-color: #d32f2f;
+            font-size: 24px;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+            border: 1px solid var(--primary-cyan);
+            font-family: 'Orbitron', monospace;
         }
 
         #timer-container {
             width: 100%;
-            height: 20px;
-            background-color: #555;
-            border-radius: 10px;
+            height: 10px;
+            background-color: #333;
+            border-radius: 5px;
             margin-top: 20px;
             overflow: hidden;
+            border: 1px solid #555;
         }
 
         #timer-bar {
             width: 100%;
             height: 100%;
-            background-color: #4CAF50;
+            background-color: var(--success-green);
+            box-shadow: 0 0 15px var(--success-green);
             transition: width 0.1s linear, background-color 0.3s;
-        }
-
-        #message {
-            color: #aaa;
-            margin-top: 10px;
-            font-size: 18px;
-        }
-
-        .warning {
-            color: #e74c3c;
-            font-size: 0.9rem;
-            margin-top: 20px;
-            font-style: italic;
         }
     </style>
 </head>
@@ -168,8 +113,8 @@
     </div>
 
     <div class="controls">
-        <a href="/"><button class="back-btn">回到首頁</button></a>
-        <button id="start-btn" onclick="startGame()">開始遊戲</button>
+        <a href="/"><button class="back-btn btn-cyber-red">回到首頁</button></a>
+        <button id="start-btn" onclick="startGame()" class="btn-cyber-green">開始遊戲</button>
     </div>
 
     <p class="warning">⚠️ 注意：普通鍵盤可能會有衝突 (Ghosting)，導致無法同時按太多鍵。</p>

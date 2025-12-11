@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排行榜 - Game Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .leaderboard-container {
+            margin-top: 50px;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .game-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-main);
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        }
+
+        th {
+            color: var(--primary-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: rgba(0, 243, 255, 0.05);
+        }
+
+        .rank-1 {
+            color: #f1c40f;
+            text-shadow: 0 0 10px #f1c40f;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .rank-2 {
+            color: #bdc3c7;
+            text-shadow: 0 0 10px #bdc3c7;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .rank-3 {
+            color: #e67e22;
+            text-shadow: 0 0 10px #e67e22;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🏆 LEADERBOARD 🏆</h1>
+    <p class="subtitle">TOP SCORERS HALL OF FAME</p>
+
+    <div class="game-selector">
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('snake')">Snake</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('block')">Block Breaker</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('dino')">Dino Run</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('twister')">Finger Panic</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('keyboard')">Keyboard Mania</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('Bullet_Hell')">Bullet Hell</button>
+    </div>
+
+    <div class="leaderboard-container game-card">
+        <h2 id="current-game-title" style="text-align: center; color: var(--primary-purple); margin-bottom: 20px;">
+            Select a Game</h2>
+
+        <table id="score-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Score</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="score-body">
+                <!-- Scores will load here -->
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 30px;">
+        <a href="/"><button class="back-btn btn-cyber-red">回到首頁</button></a>
+    </div>
+
+    <script>
+        async function loadLeaderboard(gameName) {
+            document.getElementById('current-game-title').innerText = gameName.toUpperCase().replace('_', ' ') + " RANKINGS";
+            const tbody = document.getElementById('score-body');
+            tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
+
+            try {
+                const response = await fetch(`/api/leaderboard/${gameName}`);
+                const scores = await response.json();
+
+                tbody.innerHTML = '';
+
+                if (scores.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">No scores yet. Be the first!</td></tr>';
+                    return;
+                }
+
+                scores.forEach((entry, index) => {
+                    const tr = document.createElement('tr');
+                    let rankClass = '';
+                    if (index === 0) rankClass = 'rank-1';
+                    if (index === 1) rankClass = 'rank-2';
+                    if (index === 2) rankClass = 'rank-3';
+
+                    const date = new Date(entry.timestamp).toLocaleDateString();
+
+                    tr.innerHTML = `
+                        <td class="${rankClass}">#${index + 1}</td>
+                        <td style="color: white; font-weight: bold;">${entry.username}</td>
+                        <td class="${rankClass}">${entry.score}</td>
+                        <td style="color: var(--text-dim);">${date}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error loading leaderboard:", error);
+                tbody.innerHTML = '<tr><td colspan="4" style="color: red;">Error loading data.</td></tr>';
+            }
+        }
+
+        // Default load
+        loadLeaderboard('snake');
+    </script>
+</body>
+
+</html>

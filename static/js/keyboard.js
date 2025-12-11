@@ -12,12 +12,14 @@ const VISIBLE_BLOCKS = Math.ceil(canvas.height / BLOCK_HEIGHT) + 1;
 const HIT_Y = canvas.height - 100; // 判定線位置
 
 // 遊戲邏輯變數
+// 遊戲邏輯變數
 const KEYS = ['d', 'f', 'j', 'k'];
 let stepQueue = [];     // 儲存接下來的方塊位置 (0-3)
 let currentStep = 0;    // 當前要打擊的方塊在 stepQueue 中的 index
 let drawOffset = 0;     // 視覺捲動偏移量
 let isPlaying = false;
 let isGameOver = false;
+let hasStarted = false; // New: Wait for first key press
 
 // 時間與狀態
 let startTime = 0;
@@ -34,6 +36,7 @@ function initGame() {
     isPlaying = true;
     isGameOver = false;
     isFrozen = false;
+    hasStarted = false; // Reset start flag
     penaltyOverlay.style.display = 'none';
     score = 0;
     timeLeft = 30;
@@ -47,7 +50,8 @@ function initGame() {
     }
 
     updateUI();
-    startTime = performance.now();
+    // Don't set startTime here anymore. Wait for first key.
+    draw();
     requestAnimationFrame(gameLoop);
 }
 
@@ -68,6 +72,12 @@ document.addEventListener('keydown', (e) => {
     const laneIndex = KEYS.indexOf(key);
 
     if (laneIndex !== -1) {
+        // First key press triggers start
+        if (!hasStarted) {
+            hasStarted = true;
+            startTime = performance.now();
+        }
+
         // 檢查是否是當前目標方塊
         const targetLane = stepQueue[currentStep];
 
@@ -106,6 +116,12 @@ function handleMistake() {
 
 function gameLoop(timestamp) {
     if (!isPlaying) return;
+
+    // Check if game has started
+    if (!hasStarted) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
 
     // 更新時間
     const elapsed = timestamp - startTime;
@@ -244,6 +260,17 @@ function endGame() {
     isFrozen = false; // Reset freeze state
     penaltyOverlay.style.display = 'none'; // Ensure overlay is hidden
     draw(); // show final frame
+
+    // Submit Score
+    submitScore('keyboard', score);
+}
+
+function submitScore(gameId, score) {
+    fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gameId, score: score }),
+    });
 }
 
 function updateUI() {

@@ -135,30 +135,47 @@ function gameLoop(timestamp) {
         // 重新計時在 nextRound 裡做了，但因為 handleTimeOut 會叫 nextRound，所以這裡不需要 return (除非 end game)
         // 注意 handleTimeOut 可能會結束遊戲
         if (!isPlaying) return;
+
+        // Critical Fix: If we are still playing after timeout (lives > 0), we MUST continue the loop!
+        requestAnimationFrame(gameLoop);
     } else {
         requestAnimationFrame(gameLoop);
     }
 }
 
-function handleTimeOut() {
+function loseLife(reason) {
     lives--;
     updateLives();
 
-    // Visual Feedback for damage
+    // Visual Feedback
     gameArea.style.backgroundColor = "#3e1a1a";
     setTimeout(() => {
-        gameArea.style.backgroundColor = ""; // Reset
+        gameArea.style.backgroundColor = "";
     }, 100);
 
     if (lives <= 0) {
-        endGame("Times Up! No lives left!");
+        endGame(reason || "No lives left!");
     } else {
-        // 如果目前沒有任何按鍵 (例如第一題就沒按)，不需要強制釋放 (也沒得放)
-        // 直接換下一題 Press
+        // Show warning/damage
+        instructionEl.innerText = reason || "Ouch! Lost a life!";
+        instructionEl.style.color = "var(--danger-red)";
+
+        // Force next round to recover
+        // If we lost a life, usually good to reset tempo or assist player
+        // For Key Release error: Key is already gone, so we just continue
+        // For Time Out: We force release to clear buffer
+
+        // Simple logic: If we have many keys, force release. If few, press.
+        // Actually, let's stick to the TimeOut logic for TimeOut, but for "Wrong Release", we just continue to next round.
+    }
+}
+
+function handleTimeOut() {
+    loseLife("Time Out!");
+    if (lives > 0) {
         if (requiredKeys.size === 0) {
             nextRound(false);
         } else {
-            // 扣血後，強制下一輪為釋放鍵，避免鬼鍵卡死
             nextRound(true);
         }
     }
@@ -166,7 +183,8 @@ function handleTimeOut() {
 
 function handleKeyDown(e) {
     if (!isPlaying) return;
-    e.preventDefault();
+    // Don't prevent default blindly to allow browser shortcuts, but for game keys?
+    // e.preventDefault(); 
 
     const char = e.key.toUpperCase();
 
@@ -194,14 +212,31 @@ function handleKeyUp(e) {
             updateScore();
             nextRound();
         } else if (requiredKeys.has(char)) {
-            // 放錯鍵是不是也該扣血而不是直接死？
-            // 原需求沒說，暫時維持直接死，或者改成扣血？
-            // 為了容錯，建議改成扣血比較一致，但目前先照舊
-            endGame(`You released [${char}] instead of [${currentTargetKey}]!`);
+            // Wrong key released in Release Phase
+            requiredKeys.delete(char); // It's physically released, so we must remove it
+            loseLife("Wrong key released!");
+            if (lives > 0) {
+                renderHeldKeys();
+                // Check if we still have the target key? 
+                // The target was NOT released (since we are in else if). 
+                // So we are still waiting for target. 
+                // BUT user might be confused. Let's just prompt new round to reset flow?
+                // Or user still needs to release the target?
+                // Let's force a new round to be safe/clear.
+                nextRound();
+            }
         }
     } else {
         if (requiredKeys.has(char)) {
-            endGame(`You released [${char}]!`);
+            // Key released in Press Phase (Fat finger slip)
+            requiredKeys.delete(char);
+            loseLife("Don't let go!");
+
+            if (lives > 0) {
+                renderHeldKeys();
+                // Determine next step. 
+                nextRound();
+            }
         }
     }
 }
@@ -251,6 +286,9 @@ function endGame(reason) {
     failReason.innerText = reason;
     instructionEl.innerText = "Game Over";
     instructionEl.style.color = "#e74c3c";
+
+    // Submit Score
+    submitScore('twister', score);
 }
 
 function gameWin() {
@@ -267,4 +305,15 @@ function gameWin() {
     failReason.innerText = "Mac Hardware Limit Reached! You are a Finger Master!";
     instructionEl.innerText = "Victory!";
     instructionEl.style.color = "#4CAF50";
+
+    // Submit Score
+    submitScore('twister', score);
+}
+
+function submitScore(gameId, score) {
+    fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gameId, score: score }),
+    });
 }

@@ -211,6 +211,8 @@ function update() {
             } else if (ball.y - ball.radius > canvas.height) {
                 // 掉到底部
                 isGameOver = true;
+                // Submit Score
+                submitScore('block', score);
             }
         }
 
@@ -240,6 +242,14 @@ function update() {
     }
 
     requestAnimationFrame(update);
+}
+
+function submitScore(gameId, score) {
+    fetch('/api/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ game_id: gameId, score: score }),
+    });
 }
 
 update();

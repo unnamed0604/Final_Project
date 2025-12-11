@@ -283,7 +283,7 @@ function submitScore(finalScore) {
     fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ game_id: 'bullet_hell', score: finalScore }),
+        body: JSON.stringify({ game_id: 'Bullet_Hell', score: finalScore }),
     })
         .then(response => response.json())
         .catch((error) => { console.error('Error:', error); });

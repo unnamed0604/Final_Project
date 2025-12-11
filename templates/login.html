@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入 - Game Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .auth-container {
+            margin-top: 100px;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        label {
+            color: var(--primary-cyan);
+            margin-bottom: 5px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--primary-purple);
+            padding: 10px;
+            color: white;
+            border-radius: 4px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+        }
+
+        .auth-links {
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .auth-links a {
+            color: var(--success-green);
+            text-decoration: none;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+
+        .error-msg {
+            color: var(--danger-red);
+            background: rgba(255, 42, 42, 0.1);
+            border: 1px solid var(--danger-red);
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 style="margin-bottom: 0;">歡迎回來</h1>
+    <p style="color: var(--text-dim);">SYSTEM ACCESSED</p>
+
+    <div class="auth-container game-card">
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="username">USERNAME</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">PASSWORD</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn btn-cyber-green" style="width: 100%;">LOGIN</button>
+        </form>
+
+        <div class="auth-links">
+            尚未加入？ <a href="/register">註冊帳號 (REGISTER)</a>
+            <br><br>
+            <a href="/" style="color: var(--text-dim);">&larr; 回到首頁</a>
+        </div>
+    </div>
+
+</body>
+
+</html>

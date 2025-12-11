@@ -5,76 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dino Block Run</title>
+    <title>Dino Block Run</title>
+    <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        body {
-            margin: 0;
+        /* Game Specific */
+        #game-container {
+            /* Override size if needed, but style.css handles standard container */
+            width: 800px;
+            max-width: 100%;
             padding: 0;
+            /* Dino canvas needs no padding */
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #222;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            flex-direction: column;
-        }
-
-        #game-container {
-            position: relative;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            border: 2px solid #555;
-            background-color: #f7f7f7;
-            /* Light background for contrast */
-        }
-
-        canvas {
-            display: block;
-        }
-
-        .ui-overlay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            pointer-events: none;
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .controls {
-            margin-top: 20px;
-            text-align: center;
-            color: #aaa;
-        }
-
-        button {
-            background-color: #4CAF50;
-            /* Green for Restart */
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 10px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .back-btn {
-            background-color: #f44336;
-            /* Red for Back */
-            margin-right: 10px;
-        }
-
-        .back-btn:hover {
-            background-color: #d32f2f;
         }
     </style>
 </head>
@@ -82,16 +25,18 @@
 <body>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div class="ui-overlay">
-            Score: <span id="score">0</span>
+        <canvas id="gameCanvas" width="800" height="400" style="width: 100%; height: auto;"></canvas>
+        <div class="hud-panel">
+            <div class="hud-item hud-score">Score: <span id="score">0</span></div>
         </div>
     </div>
 
-    <div class="controls">
-        <p>控制方式：按 <b>空白鍵 (Space)</b> 或 <b>向上鍵 (Up)</b> 跳躍</p>
-        <a href="/"><button class="back-btn">回到首頁</button></a>
-        <button id="restartBtn" onclick="initGame()">重新開始</button>
+    <div class="controls-panel">
+        <p class="controls-description">控制方式：按 <b>空白鍵 (Space)</b> 或 <b>向上鍵 (Up)</b> 跳躍</p>
+        <div class="button-group">
+            <a href="/"><button class="back-btn btn-cyber-red">回到首頁</button></a>
+            <button id="restartBtn" onclick="initGame()" class="btn-cyber-green">重新開始</button>
+        </div>
     </div>
 
     <script src="/static/js/dino.js"></script>

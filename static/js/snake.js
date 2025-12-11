@@ -161,6 +161,9 @@ function gameOver() {
     isGameRunning = false;
     clearInterval(gameLoopId);
     // 不要在這裡 drawMessage，讓 gameLoop 最後畫，避免被 draw() 覆蓋
+
+    // Submit Score
+    submitScore('snake', score);
 }
 
 function drawMessage(text, color, subtext) {
@@ -174,6 +177,30 @@ function drawMessage(text, color, subtext) {
         ctx.font = "20px Arial";
         ctx.fillText(subtext, canvas.width / 2, canvas.height / 2 + 40);
     }
+}
+
+function submitScore(gameId, score) {
+    fetch('/api/score', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            game_id: gameId,
+            score: score
+        }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log("Score saved!");
+            } else {
+                console.log("Score not saved (Not logged in or error)");
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
 }
 
 // 啟動

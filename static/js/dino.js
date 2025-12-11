@@ -190,6 +190,33 @@ function gameOver() {
     ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
     ctx.font = '20px Arial';
     ctx.fillText('Press Restart Button to Try Again', canvas.width / 2, canvas.height / 2 + 50);
+
+    // Submit Score
+    submitScore('dino', score);
+}
+
+function submitScore(gameId, score) {
+    fetch('/api/score', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            game_id: gameId,
+            score: score
+        }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log("Score saved!");
+            } else {
+                console.log("Score not saved (Not logged in or error)");
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
 }
 
 // 初始畫面
