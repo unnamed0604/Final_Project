@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸運抽獎 (Lottery)</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Local overrides if needed, but rely on style.css for main partials */
+        /* Removing body style to inherit from style.css */
+
+        h1 {
+            /* Inherit or keep local adjustment? style.css has h1 styling. */
+            /* Let's keep specific margin but inherit font/color from style.css likely */
+            margin-bottom: 2rem;
+        }
+
+        .game-container {
+            background-color: #2d2d2d;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 200px;
+        }
+
+        .info-box {
+            background-color: #333;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #444;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        #timer-value {
+            color: #ff6b6b;
+        }
+
+        #score-value {
+            color: #4ca1af;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .grid-cell {
+            width: 80px;
+            height: 80px;
+            background-color: #444;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: default;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .grid-cell.active {
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+            border-color: #fff;
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .grid-cell.green {
+            background-color: #2ecc71;
+            /* Green */
+            color: #fff;
+        }
+
+        .grid-cell.red {
+            background-color: #e74c3c;
+            /* Red */
+            color: #fff;
+        }
+
+        .grid-cell.yellow {
+            background-color: #f1c40f;
+            /* Yellow */
+            color: #333;
+            /* Dark text for contrast */
+        }
+
+        /* Ensure active overrides color styles slightly or works with them */
+        .grid-cell.green.active {
+            box-shadow: 0 0 20px #2ecc71;
+        }
+
+        .grid-cell.red.active {
+            box-shadow: 0 0 20px #e74c3c;
+        }
+
+        .grid-cell.yellow.active {
+            box-shadow: 0 0 20px #f1c40f;
+        }
+
+        .draw-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            width: 100%;
+        }
+
+        #draw-btn {
+            flex: 1;
+            padding: 1rem;
+            font-size: 1.2rem;
+            background: linear-gradient(to right, #2c3e50, #4ca1af);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s, filter 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        #draw-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        #draw-btn:active {
+            transform: scale(0.98);
+        }
+
+        #draw-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            filter: none;
+        }
+
+        #result-display {
+            width: 80px;
+            height: 80px;
+            background-color: #222;
+            border: 2px solid #4ca1af;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            color: #4ca1af;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        #result-display.green {
+            border-color: #2ecc71;
+            color: #2ecc71;
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+        }
+
+        #result-display.red {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        #result-display.yellow {
+            border-color: #f1c40f;
+            color: #f1c40f;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
+        }
+
+        .back-link {
+            margin-top: 2rem;
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>幸運抽獎</h1>
+
+    <div class="game-container">
+        <div class="left-panel">
+            <div class="info-box">
+                <div class="info-label">時間剩餘</div>
+                <div class="info-value" id="timer-value">60</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">目前分數</div>
+                <div class="info-value" id="score-value">0</div>
+            </div>
+            <div class="info-box" style="display:none;" id="message-box">
+                <div class="info-label">狀態</div>
+                <div class="info-value" id="game-message" style="font-size: 1rem;">準備開始</div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="grid-container">
+                <!-- 7 8 9 -->
+                <div class="grid-cell" data-number="7">7</div>
+                <div class="grid-cell" data-number="8">8</div>
+                <div class="grid-cell" data-number="9">9</div>
+                <!-- 4 5 6 -->
+                <div class="grid-cell" data-number="4">4</div>
+                <div class="grid-cell" data-number="5">5</div>
+                <div class="grid-cell" data-number="6">6</div>
+                <!-- 1 2 3 -->
+                <div class="grid-cell" data-number="1">1</div>
+                <div class="grid-cell" data-number="2">2</div>
+                <div class="grid-cell" data-number="3">3</div>
+            </div>
+
+            <div class="draw-section">
+                <div id="result-display">-</div>
+                <button id="draw-btn">抽獎 (G)</button>
+            </div>
+
+
+        </div>
+    </div>
+
+    <div class="controls-panel">
+        <p class="controls-description">按下 "抽獎" 按鈕來試試手氣！</p>
+        <div class="button-group">
+            <a href="/"><button class="back-btn btn-cyber-red">回到首頁</button></a>
+            <button id="restart-btn" class="btn-cyber-green" onclick="location.reload()">再玩一次</button>
+        </div>
+    </div>
+
+    <script src="/static/js/lottery.js"></script>
+</body>
+
+</html>

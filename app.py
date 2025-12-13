@@ -125,6 +125,10 @@ def game_twister():
 
 
 
+@app.route("/game_lottery")
+def game_lottery():
+    return render_template("lottery.html")
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
 
