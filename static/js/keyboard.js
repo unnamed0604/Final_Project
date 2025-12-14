@@ -49,6 +49,7 @@ function initGame() {
         addRandomStep();
     }
 
+    AudioController.noteIndex = 0; // Reset melody
     updateUI();
     // Don't set startTime here anymore. Wait for first key.
     draw();
@@ -94,21 +95,20 @@ document.addEventListener('keydown', (e) => {
 function handleCorrectHit() {
     score++;
     currentStep++;
+    AudioController.playNextNote(); // Play melody note
 
     // 如果快用完了再生成
     if (currentStep > stepQueue.length - 100) {
         for (let i = 0; i < 100; i++) addRandomStep();
     }
-
-    // 視覺效果：不需要平滑動畫，直接跳一格，感覺更像"打字機"的爽快感
-    // 或者用一點點平滑 transition 這裡選擇半平滑：設定目標Offset
-    // 為了極致反應，直接改變
 }
 
 function handleMistake() {
     isFrozen = true;
     freezeEndTime = performance.now() + PENALTY_DURATION;
     penaltyOverlay.style.display = 'flex';
+    AudioController.playError(); // Play error sound
+
     // 震動效果 (可選)
     canvas.style.transform = "translateX(5px)";
     setTimeout(() => canvas.style.transform = "none", 50);
@@ -278,5 +278,102 @@ function updateUI() {
     timeEl.innerText = timeLeft.toFixed(2);
 }
 
+// -------------------------------------------------------------------------
+// Audio Controller
+// -------------------------------------------------------------------------
+const AudioController = {
+    ctx: null,
+    melody: [],
+    noteIndex: 0,
+    isMuted: false,
+
+    // Note Frequencies
+    notes: {
+        'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 'F#4': 369.99, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
+        'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'F#5': 739.99, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77,
+        'C6': 1046.50, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94, 'G#3': 207.65, 'G#4': 415.30
+    },
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initMelody();
+        }
+    },
+
+    initMelody() {
+        // Rick Roll (Never Gonna Give You Up) - MIDI (G Major)
+        // 1 note = 1 hit.
+        const m = [
+            // 1. Ne-ver gon-na give you up (D E G E B A G) -> 62, 64, 67, 64, 71, 69, 67
+            62, 64, 67, 64, 71, 69, 67,
+
+            // 2. Ne-ver gon-na let you down (D E G E A G E) -> 62, 64, 67, 64, 69, 67, 64
+            62, 64, 67, 64, 69, 67, 64,
+
+            // 3. Ne-ver gon-na run a-round and de-sert you (D E G A B A G F# E D D) -> 11 notes
+            62, 64, 67, 69, 71, 69, 67, 66, 64, 62, 62,
+
+            // 4. Ne-ver gon-na make you cry (D E G E B A G) -> 62, 64, 67, 64, 71, 69, 67
+            62, 64, 67, 64, 71, 69, 67,
+
+            // 5. Ne-ver gon-na say good-bye (D E G E G5 F#5 G5) -> 62, 64, 67, 64, 79, 78, 79
+            // (Note: F#5 is 78, G5 is 79)
+            62, 64, 67, 64, 79, 78, 79,
+
+            // 6. Ne-ver gon-na tell a lie and hurt you (D E G A B A G F# E D D) -> 11 notes
+            62, 64, 67, 69, 71, 69, 67, 66, 64, 62, 62
+        ];
+        this.melody = m;
+        this.noteIndex = 0;
+    },
+
+    playNextNote() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        const midiNote = this.melody[this.noteIndex % this.melody.length];
+        // Convert MIDI to Frequency: f = 440 * 2^((d-69)/12)
+        const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+
+        // Use Sine wave for less "electronic" sound, more flute/piano-ish
+        this.playTone(freq, 'sine', 0.2);
+        this.noteIndex++;
+    },
+
+    playError() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        // Low thud instead of Buzz
+        this.playTone(100, 'square', 0.2);
+    },
+
+    playTone(freq, type, duration, delay = 0) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + delay);
+
+        // Envelope: Piano-like Attack and Decay
+        const now = this.ctx.currentTime + delay;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.02); // Quick Attack
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration); // Smooth Decay
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + duration + 0.1);
+    }
+};
+
 // 初始畫面
 draw();
+AudioController.init(); // Try init silently, browser might block until interaction
+
+// -------------------------------------------------------------------------
+// Modification End
+// -------------------------------------------------------------------------
