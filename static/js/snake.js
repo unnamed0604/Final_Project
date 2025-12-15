@@ -6,6 +6,38 @@ const scoreElement = document.getElementById('score');
 const gridSize = 20; // 每一格的大小
 const tileCount = canvas.width / gridSize; // 橫向/縱向格數 (假設正方形)
 
+// 音效系統
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    if (type === 'eat') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime); // 增加吃東西音量
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'die') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 降低死亡音量
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    }
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+}
+
 // 遊戲變數
 let score = 0;
 let gameSpeed = 100; // 更新頻率 (ms)
@@ -104,6 +136,7 @@ function update() {
 
     // 3. 檢查吃食物
     if (head.x === food.x && head.y === food.y) {
+        playSound('eat');
         score += 10;
         scoreElement.innerText = score;
         spawnFood();
@@ -160,6 +193,7 @@ function gameOver() {
     isGameOver = true;
     isGameRunning = false;
     clearInterval(gameLoopId);
+    playSound('die');
     // 不要在這裡 drawMessage，讓 gameLoop 最後畫，避免被 draw() 覆蓋
 
     // Submit Score

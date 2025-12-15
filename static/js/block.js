@@ -68,19 +68,36 @@ function playSound(type, freq, duration) {
     }
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
+    const now = audioCtx.currentTime;
 
-    osc.type = type; // 'square', 'sawtooth', 'triangle', 'sine'
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    if (type === 'die') {
+        // 死亡音效 (特殊處理)
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+    } else {
+        // 一般音效
+        osc.type = type; // 'square', 'sawtooth', 'triangle', 'sine'
+        osc.frequency.setValueAtTime(freq, now);
 
-    // 音量包絡 (Envelope)
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        // Duration 參數如果是 vol 則當作音量 (向下相容)
+        // 為了避免混淆，這裡假設 duration 如果很小 (< 1) 可能是 vol
+        let vol = 0.1;
+        if (duration < 1 && duration > 0) vol = duration;
+
+        gain.gain.setValueAtTime(vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + (duration > 1 ? duration : 0.1));
+
+        osc.start(now);
+        osc.stop(now + (duration > 1 ? duration : 0.1));
+    }
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration);
 }
 
 document.addEventListener('keydown', keyDownHandler, false);
@@ -195,6 +212,7 @@ function collisionDetection() {
     }
 }
 
+// 該區塊原本是 resetGameForNextWave，被錯誤覆寫了，現在還原
 function resetGameForNextWave() {
     ball.isAttached = true;
     ball.x = paddle.x + paddle.width / 2;
@@ -226,93 +244,105 @@ function drawWaveInfo() {
     ctx.fillText("Wave: " + wave, canvas.width - 8, 20);
 }
 
-function update() {
+// FPS Control
+let lastTime = 0;
+const fpsInterval = 1000 / 60;
+
+function update(timestamp) {
     if (isGameOver) {
         drawMessage("GAME OVER", "red", "Press SPACE to Restart");
         return;
     }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBricks();
-    drawBall();
-    drawPaddle();
-    drawWaveInfo();
-    collisionDetection();
+    requestAnimationFrame(update);
 
-    // 球移動邏輯
-    if (!ball.isAttached) {
-        // 碰到左右牆壁
-        if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
-            ball.dx = -ball.dx;
-        }
-        // 碰到頂部
-        // 碰到頂部
-        if (ball.y + ball.dy < ball.radius) {
-            ball.dy = -ball.dy;
-        }
-        // 碰到擋板 (Paddle Collision)
-        // 判斷球的下緣是否接觸到擋板的上緣
-        else if (
-            ball.dy > 0 && // 球必須是向下掉
-            ball.y + ball.radius >= paddle.y && // 球碰到了擋板高度
-            ball.y - ball.radius <= paddle.y + paddle.height && // 球還沒完全穿過擋板
-            ball.x + ball.radius >= paddle.x && // 水平範圍判定
-            ball.x - ball.radius <= paddle.x + paddle.width
-        ) {
-            // 強制設定球的位置在擋板上方，避免黏住或穿透
+    if (!lastTime) lastTime = timestamp;
+    const elapsed = timestamp - lastTime;
+
+    if (elapsed > fpsInterval) {
+        lastTime = timestamp - (elapsed % fpsInterval);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBricks();
+        drawBall();
+        drawPaddle();
+        drawWaveInfo();
+        collisionDetection();
+
+        // 球移動邏輯
+        if (!ball.isAttached) {
+            // 碰到左右牆壁
+            if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+                ball.dx = -ball.dx;
+            }
+            // 碰到頂部
+            // 碰到頂部
+            if (ball.y + ball.dy < ball.radius) {
+                ball.dy = -ball.dy;
+            }
+            // 碰到擋板 (Paddle Collision)
+            // 判斷球的下緣是否接觸到擋板的上緣
+            else if (
+                ball.dy > 0 && // 球必須是向下掉
+                ball.y + ball.radius >= paddle.y && // 球碰到了擋板高度
+                ball.y - ball.radius <= paddle.y + paddle.height && // 球還沒完全穿過擋板
+                ball.x + ball.radius >= paddle.x && // 水平範圍判定
+                ball.x - ball.radius <= paddle.x + paddle.width
+            ) {
+                // 強制設定球的位置在擋板上方，避免黏住或穿透
+                ball.y = paddle.y - ball.radius;
+
+                // --- 新的反彈物理 ---
+                // 透過擊球點決定反彈角度 (Rebound Angle)，而非直接加減 DX
+                // 1. 計算擊球點相對於板子中心的偏移量 (範圍 -1 ~ 1)
+                let center = paddle.x + paddle.width / 2;
+                let hitPoint = ball.x - center;
+                let normalizeHit = hitPoint / (paddle.width / 2);
+
+                // 2. 決定反彈角度 (最大 60度 = PI/3)
+                let bounceAngle = normalizeHit * (Math.PI / 3);
+
+                // 3. 根據角度重新計算向量，確保合速度恆等於 ball.speed
+                // 注意：這裡必須強制設為往上 (-y)，不能用 atan2(原本的向下向量)
+                ball.dx = ball.speed * Math.sin(bounceAngle);
+                ball.dy = -ball.speed * Math.cos(bounceAngle);
+
+                // 音效: 低音 (Bounce)
+                playSound('triangle', 300, 0.15);
+            }
+            // 掉到底部 (Game Over)
+            else if (ball.y - ball.radius > canvas.height) {
+                isGameOver = true;
+                playSound('die'); // 播放死亡音效
+                // Submit Score
+                submitScore('block', score);
+            }
+
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+        } else {
+            // 跟隨擋板
+            ball.x = paddle.x + paddle.width / 2;
             ball.y = paddle.y - ball.radius;
 
-            // --- 新的反彈物理 ---
-            // 透過擊球點決定反彈角度 (Rebound Angle)，而非直接加減 DX
-            // 1. 計算擊球點相對於板子中心的偏移量 (範圍 -1 ~ 1)
-            let center = paddle.x + paddle.width / 2;
-            let hitPoint = ball.x - center;
-            let normalizeHit = hitPoint / (paddle.width / 2);
-
-            // 2. 決定反彈角度 (最大 60度 = PI/3)
-            let bounceAngle = normalizeHit * (Math.PI / 3);
-
-            // 3. 根據角度重新計算向量，確保合速度恆等於 ball.speed
-            // 注意：這裡必須強制設為往上 (-y)，不能用 atan2(原本的向下向量)
-            ball.dx = ball.speed * Math.sin(bounceAngle);
-            ball.dy = -ball.speed * Math.cos(bounceAngle);
-
-            // 音效: 低音 (Bounce)
-            playSound('triangle', 300, 0.15);
-        }
-        // 掉到底部 (Game Over)
-        else if (ball.y - ball.radius > canvas.height) {
-            isGameOver = true;
-            // Submit Score
-            submitScore('block', score);
+            // 提示按空白鍵
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.fillText("Press SPACE to Start", canvas.width / 2, canvas.height / 2 + 50);
         }
 
-        ball.x += ball.dx;
-        ball.y += ball.dy;
-    } else {
-        // 跟隨擋板
-        ball.x = paddle.x + paddle.width / 2;
-        ball.y = paddle.y - ball.radius;
+        // 鍵盤控制擋板
+        if (rightPressed && paddle.x < canvas.width - paddle.width) {
+            paddle.x += paddle.speed;
+        } else if (leftPressed && paddle.x > 0) {
+            paddle.x -= paddle.speed;
+        }
 
-        // 提示按空白鍵
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.fillText("Press SPACE to Start", canvas.width / 2, canvas.height / 2 + 50);
+        if (ball.isAttached) {
+            ball.x = paddle.x + paddle.width / 2;
+        }
     }
-
-    // 鍵盤控制擋板
-    if (rightPressed && paddle.x < canvas.width - paddle.width) {
-        paddle.x += paddle.speed;
-    } else if (leftPressed && paddle.x > 0) {
-        paddle.x -= paddle.speed;
-    }
-
-    if (ball.isAttached) {
-        ball.x = paddle.x + paddle.width / 2;
-    }
-
-    requestAnimationFrame(update);
 }
 
 function submitScore(gameId, score) {

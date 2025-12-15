@@ -10,6 +10,43 @@ const timerContainer = document.getElementById('timer-container');
 const timerBar = document.getElementById('timer-bar');
 const livesEl = document.getElementById('lives');
 
+// 音效系統
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const now = audioCtx.currentTime;
+
+    if (type === 'tick') { // Pressing countdown
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(800, now);
+        gain.gain.setValueAtTime(0.15, now); // 增加音量 (0.05 -> 0.15)
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+    } else if (type === 'tock') { // Releasing countdown
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, now); // Lower pitch for release
+        gain.gain.setValueAtTime(0.15, now); // 增加音量 (0.05 -> 0.15)
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+    } else if (type === 'damage') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now); // 還原音量 (0.3 -> 0.1)
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    }
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+}
+
 // 遊戲狀態
 let isPlaying = false;
 let hasStarted = false; // 用於區分是否已經開始過 (或是由 GameOver 狀態等待重開)
@@ -21,6 +58,7 @@ let lives = 3;
 
 // 時間控制
 let startTime = 0;
+let nextTickTime = 0; // 下一次音效時間
 const TIME_LIMIT = 2000;
 let animationId;
 
@@ -113,6 +151,7 @@ function startGame() {
 function nextRound(forceRelease = false) {
     // 重置時間
     startTime = performance.now();
+    nextTickTime = startTime + 400; // 第一聲在 400ms 後響起 (起步慢)
 
     // 判斷階段
     // 如果指定強制釋放，或者持有鍵盤 >= 5，切換為放鍵 (RELEASING)
@@ -175,40 +214,72 @@ function startRefReleaseRound() {
     renderHeldKeys();
 }
 
+
+// FPS Control
+let lastTime = 0;
+const fpsInterval = 1000 / 60;
+let lastTickTime = 0; // 用於音效計時
+
 function gameLoop(timestamp) {
     if (!isPlaying) return;
 
-    const elapsed = timestamp - startTime;
-    const remaining = Math.max(0, TIME_LIMIT - elapsed);
-    const percentage = (remaining / TIME_LIMIT) * 100;
+    requestAnimationFrame(gameLoop);
 
-    timerBar.style.width = `${percentage}%`;
+    if (!lastTime) lastTime = timestamp;
+    const elapsedArgs = timestamp - lastTime;
 
-    // 顏色變化
-    if (percentage < 30) {
-        timerBar.style.backgroundColor = '#e74c3c'; // Red
-    } else if (percentage < 60) {
-        timerBar.style.backgroundColor = '#f1c40f'; // Yellow
-    } else {
-        timerBar.style.backgroundColor = '#4CAF50'; // Green
-    }
+    if (elapsedArgs > fpsInterval) {
+        lastTime = timestamp - (elapsedArgs % fpsInterval);
 
-    if (remaining <= 0) {
-        handleTimeOut();
-        // 重新計時在 nextRound 裡做了，但因為 handleTimeOut 會叫 nextRound，所以這裡不需要 return (除非 end game)
-        // 注意 handleTimeOut 可能會結束遊戲
-        if (!isPlaying) return;
+        const elapsed = performance.now() - startTime;
+        const remaining = Math.max(0, TIME_LIMIT - elapsed);
+        const percentage = (remaining / TIME_LIMIT) * 100;
 
-        // Critical Fix: If we are still playing after timeout (lives > 0), we MUST continue the loop!
-        requestAnimationFrame(gameLoop);
-    } else {
-        requestAnimationFrame(gameLoop);
+        // --- 動態音效邏輯 (Variable Tempo) ---
+        const now = performance.now();
+        if (remaining > 0 && now >= nextTickTime) {
+            // 播放音效
+            if (gameState === 'PRESSING') {
+                playSound('tick');
+            } else {
+                playSound('tock');
+            }
+
+            // 計算下一次響的時間 (動態間隔)
+            // 剩餘時間越多 -> 間隔越長 (最長 450ms)
+            // 剩餘時間越少 -> 間隔越短 (最短 50ms)
+            // 線性公式: 50 + (remaining / 2000) * 400
+            let interval = 50 + (remaining / TIME_LIMIT) * 400;
+
+            // 最後衝刺 (逼~)：當剩下不到 300ms 時，開啟極速模式
+            if (remaining < 300) {
+                interval = 40; // 40ms 機關槍速度，聽起來像連音
+            }
+
+            nextTickTime = now + interval;
+        }
+
+        timerBar.style.width = `${percentage}%`;
+
+        // 顏色變化
+        if (percentage < 30) {
+            timerBar.style.backgroundColor = '#e74c3c'; // Red
+        } else if (percentage < 60) {
+            timerBar.style.backgroundColor = '#f1c40f'; // Yellow
+        } else {
+            timerBar.style.backgroundColor = '#4CAF50'; // Green
+        }
+
+        if (remaining <= 0) {
+            handleTimeOut();
+        }
     }
 }
 
 function loseLife(reason) {
     lives--;
     updateLives();
+    playSound('damage'); // 扣血音效
 
     // Visual Feedback
     gameArea.style.backgroundColor = "#3e1a1a";

@@ -4,9 +4,66 @@ const ctx = canvas.getContext('2d');
 const scoreElement = document.getElementById('score');
 const timeElement = document.getElementById('time');
 
+// 音效系統
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let lastPuiTime = 0;
+
+function playPuiSound() {
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    // 8-bit "De" 聲: 方波，低頻，短促
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.1); // 微幅下降
+
+    gain.gain.setValueAtTime(0.1, now); // 音量適中
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+}
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const now = audioCtx.currentTime;
+
+    if (type === 'die') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+    } else if (type === 'levelup') {
+        // High pitched ding
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1600, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+    }
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+}
+
 // 遊戲狀態
 let score = 0;
+let prevScore = 0; // 追蹤分數變化以觸發音效
 let startTime = Date.now();
+let lastGrazeTime = 0; // 擦彈音效節流
 let isGameOver = false;
 let animationId;
 let bullets = [];
@@ -34,6 +91,10 @@ const keys = {
 };
 
 document.addEventListener('keydown', (e) => {
+    // 第一次按鍵時啟動 AudioContext
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // initEngineSound(); // 已移除
+
     // 遊戲結束時可以按空白鍵重開
     if ((e.key === ' ' || e.key === 'Spacebar') && isGameOver) {
         location.reload();
@@ -175,11 +236,26 @@ function updateGreenSpawn() {
     }
 }
 
-function updatePlayer() {
-    if (keys.ArrowUp && player.y - player.radius > 0) player.y -= player.speed;
-    if (keys.ArrowDown && player.y + player.radius < canvas.height) player.y += player.speed;
-    if (keys.ArrowLeft && player.x - player.radius > 0) player.x -= player.speed;
-    if (keys.ArrowRight && player.x + player.radius < canvas.width) player.x += player.speed;
+function updatePlayer() {    // 玩家移動
+    if (keys.ArrowUp && player.y > player.radius) player.y -= player.speed;
+    if (keys.ArrowDown && player.y < canvas.height - player.radius) player.y += player.speed;
+    if (keys.ArrowLeft && player.x > player.radius) player.x -= player.speed;
+    if (keys.ArrowRight && player.x < canvas.width - player.radius) player.x += player.speed;
+
+    // 更新引擎聲狀態 (改為 Pui Pui 聲)
+    const isMoving = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+    // updateEngineSound(isMoving); // 移除舊引擎聲
+
+    // Pui Pui 邏輯 (現在是 De De De): 如果正在移動，且距離上次發聲超過 200ms
+    if (isMoving) {
+        const now = Date.now();
+        if (now - lastPuiTime > 200) { // 加快一點節奏 (5次/秒)
+            playPuiSound();
+            lastPuiTime = now;
+        }
+    }
+
+    // 產生子彈
 }
 
 function drawPlayer() {
@@ -263,14 +339,21 @@ setInterval(() => {
         const minutes = Math.floor(elapsedSeconds / 60);
         const pointsToAdd = 1 + minutes;
 
+        prevScore = score;
         score += pointsToAdd;
         scoreElement.innerText = score;
+
+        // 檢查是否跨越 50 分 (例如 49 -> 51, 或 99 -> 101)
+        if (Math.floor(score / 50) > Math.floor(prevScore / 50)) {
+            playSound('levelup');
+        }
     }
 }, 1000);
 
 
 function gameOver() {
     isGameOver = true;
+    playSound('die'); // 播放死亡音效
     cancelAnimationFrame(animationId);
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
@@ -302,28 +385,41 @@ function submitScore(finalScore) {
         .catch((error) => { console.error('Error:', error); });
 }
 
-function gameLoop() {
+// FPS Control
+let lastTime = 0;
+const fpsInterval = 1000 / 60;
+
+function gameLoop(timestamp) {
     if (isGameOver) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    updatePlayer();
-    drawPlayer();
-
-    // 產生紅色子彈
-    frameCount++;
-    if (frameCount % bulletInterval === 0) {
-        createBullet();
-    }
-
-    // 產生綠色子彈邏輯
-    updateGreenSpawn();
-
-    updateBullets();
-    drawBullets();
-    updateScoreAndTime();
-
+    // Request next frame
     animationId = requestAnimationFrame(gameLoop);
+
+    if (!lastTime) lastTime = timestamp;
+    const elapsed = timestamp - lastTime;
+
+    // Throttle to 60 FPS
+    if (elapsed > fpsInterval) {
+        lastTime = timestamp - (elapsed % fpsInterval);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        updatePlayer();
+        drawPlayer();
+
+        // 產生紅色子彈
+        frameCount++;
+        if (frameCount % bulletInterval === 0) {
+            createBullet();
+        }
+
+        // 產生綠色子彈邏輯
+        updateGreenSpawn();
+
+        updateBullets();
+        drawBullets();
+        updateScoreAndTime();
+    }
 }
 
 // 初始化綠色子彈時間

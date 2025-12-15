@@ -8,6 +8,38 @@ const JUMP_FORCE = -20; // 加大起跳爆發力 (-16 -> -20)，維持高度但�
 const GROUND_Y = canvas.height - 100;
 const SPEED_INITIAL = 10; // 初始速度回復為 10
 
+// 音效系統
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    if (type === 'jump') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 增加跳躍音量 (0.05 -> 0.1)
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'die') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 降低死亡音量 (0.2 -> 0.1)
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+    }
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+}
+
 // 遊戲狀態
 let gameSpeed = SPEED_INITIAL;
 let score = 0;
@@ -43,6 +75,7 @@ class Player {
         if (this.isGrounded && keys['Jump']) {
             this.dy = JUMP_FORCE;
             this.isGrounded = false;
+            playSound('jump');
         }
 
         this.y += this.dy;
@@ -265,75 +298,89 @@ const bgImg = new Image();
 bgImg.src = '/static/images/minecraft_bg.jpg';
 let bgX = 0;
 
-function animate() {
+// FPS Control
+let lastTime = 0;
+const fpsInterval = 1000 / 60;
+
+function animate(timestamp) {
     if (!isGameRunning) return;
 
-    // ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // 改用天空色填充背景，這樣即使有 1px 的縫隙也不會透出黑色
-    ctx.fillStyle = '#92C2F7';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Request next frame first
+    animationId = requestAnimationFrame(animate);
 
-    // 繪製捲動背景
-    if (bgImg.complete) {
-        // 算出圖片縮放比例以填滿高度
-        // 假設圖片是完整的背景（天空+地面），我們讓它高度適配 Canvas
-        // 但為了像素感，也許保持原比例或 fill
+    if (!lastTime) lastTime = timestamp;
+    const elapsed = timestamp - lastTime;
 
-        // 這裡採用簡單的無縫捲動邏輯
-        const scale = canvas.height / bgImg.height;
-        const scaledWidth = bgImg.width * (canvas.height / bgImg.height); // 保持比例填滿高度
+    // Only update if enough time has passed (60 FPS)
+    if (elapsed > fpsInterval) {
+        lastTime = timestamp - (elapsed % fpsInterval);
 
-        // 移動背景 X
-        bgX -= gameSpeed * 0.5; // 背景移動速度比障礙物慢一點點，製造視差 (Parallax)，或一樣快
-        // 這裡如果是地板，應該跟障礙物一樣快
-        // 讓我們設為跟 gameSpeed 一樣，因為它是地板
+        // 改用天空色填充背景，這樣即使有 1px 的縫隙也不會透出黑色
+        ctx.fillStyle = '#92C2F7';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 重置
-        if (bgX <= -scaledWidth) {
-            bgX = 0;
+        // 繪製捲動背景
+        if (bgImg.complete) {
+            // 算出圖片縮放比例以填滿高度
+            // 假設圖片是完整的背景（天空+地面），我們讓它高度適配 Canvas
+            // 但為了像素感，也許保持原比例或 fill
+
+            // 這裡採用簡單的無縫捲動邏輯
+            const scale = canvas.height / bgImg.height;
+            const scaledWidth = bgImg.width * (canvas.height / bgImg.height); // 保持比例填滿高度
+
+            // 移動背景 X
+            bgX -= gameSpeed * 0.5; // 背景移動速度比障礙物慢一點點，製造視差 (Parallax)，或一樣快
+            // 這裡如果是地板，應該跟障礙物一樣快
+            // 讓我們設為跟 gameSpeed 一樣，因為它是地板
+
+            // 重置
+            if (bgX <= -scaledWidth) {
+                bgX = 0;
+            }
+
+            // 畫兩張圖來銜接
+            // 稍微拉伸寬度確保沒有縫隙
+            // 為了消除接縫，加上 1px 的重疊 (overlap)
+            // 使用 Math.floor 或 ceil 取整數坐標也可以減少接縫，但重疊最保險
+            ctx.drawImage(bgImg, Math.floor(bgX), 0, scaledWidth + 1, canvas.height);
+            ctx.drawImage(bgImg, Math.floor(bgX + scaledWidth), 0, scaledWidth + 1, canvas.height);
+
+            if (bgX + scaledWidth < canvas.width) {
+                ctx.drawImage(bgImg, Math.floor(bgX + scaledWidth * 2), 0, scaledWidth + 1, canvas.height);
+            }
+
+        } else {
+            // Fallback: 畫地面
+            ctx.beginPath();
+            ctx.moveTo(0, GROUND_Y);
+            ctx.lineTo(canvas.width, GROUND_Y);
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
-        // 畫兩張圖來銜接
-        // 稍微拉伸寬度確保沒有縫隙
-        // 為了消除接縫，加上 1px 的重疊 (overlap)
-        // 使用 Math.floor 或 ceil 取整數坐標也可以減少接縫，但重疊最保險
-        ctx.drawImage(bgImg, Math.floor(bgX), 0, scaledWidth + 1, canvas.height);
-        ctx.drawImage(bgImg, Math.floor(bgX + scaledWidth), 0, scaledWidth + 1, canvas.height);
+        player.update();
+        player.draw();
 
-        if (bgX + scaledWidth < canvas.width) {
-            ctx.drawImage(bgImg, Math.floor(bgX + scaledWidth * 2), 0, scaledWidth + 1, canvas.height);
+        spawnObstacle();
+
+        obstacles.forEach(obs => {
+            obs.update();
+            obs.draw();
+        });
+
+        obstacles = obstacles.filter(obs => !obs.markedForDeletion);
+
+        if (checkCollision()) {
+            gameOver();
         }
-
-    } else {
-        // Fallback: 畫地面
-        ctx.beginPath();
-        ctx.moveTo(0, GROUND_Y);
-        ctx.lineTo(canvas.width, GROUND_Y);
-        ctx.strokeStyle = '#555';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    }
-
-    player.update();
-    player.draw();
-
-    spawnObstacle();
-
-    obstacles.forEach(obs => {
-        obs.update();
-        obs.draw();
-    });
-
-    obstacles = obstacles.filter(obs => !obs.markedForDeletion);
-
-    if (checkCollision()) {
-        gameOver();
-    } else {
-        animationId = requestAnimationFrame(animate);
     }
 }
 
 function gameOver() {
+    if (!isGameOver) playSound('die'); // 防止重複播放
+
     isGameRunning = false;
     isGameOver = true;
 

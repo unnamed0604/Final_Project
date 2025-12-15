@@ -22,6 +22,57 @@ document.addEventListener('DOMContentLoaded', () => {
     // 數字顏色狀態 (Key: 數字 1-9, Value: 'green', 'red', 'yellow', or '')
     let cellColors = {};
 
+    // 音效系統
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const now = audioCtx.currentTime;
+
+        if (type === 'tick') {
+            // 短促的跳動音
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, now);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } else if (type === 'win') {
+            // 正面音效 (Green/Yellow)
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.linearRampToValueAtTime(800, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else if (type === 'lose') {
+            // 負面音效 (Red)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        } else {
+            // 普通結果
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now);
+            osc.stop(now + 0.2);
+        }
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+    }
+
     // 初始化
     function init() {
         score = 0;
@@ -161,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const randNum = Math.floor(Math.random() * 9) + 1;
             highlightCell(randNum, false); // false = 不要持久，只是動畫閃爍
             resultDisplay.textContent = randNum;
+            playSound('tick');
 
             animateCount++;
             if (animateCount >= maxAnimateFrames) {
@@ -200,16 +252,20 @@ document.addEventListener('DOMContentLoaded', () => {
             effectMsg = " (+3秒)";
             // 視覺提示
             showFloatingText(drawnNumber, "+3s", "green");
+            playSound('win');
         } else if (color === 'red') {
             score -= drawnNumber;
             effectMsg = " (扣分)";
             showFloatingText(drawnNumber, `-${drawnNumber}`, "red");
+            playSound('lose');
         } else if (color === 'yellow') {
             score += drawnNumber * 2;
             effectMsg = " (雙倍!)";
             showFloatingText(drawnNumber, `+${drawnNumber * 2}`, "yellow");
+            playSound('win');
         } else {
             score += drawnNumber; // 普通
+            playSound('normal');
         }
 
         updateDisplay();
