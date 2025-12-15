@@ -72,6 +72,19 @@
 
 <body>
 
+    <div class="auth-bar" style="position: absolute; top: 20px; right: 20px; z-index: 100;">
+        {% if session.get('user') %}
+        <span style="color: var(--primary-cyan); margin-right: 15px;">PLAYER: {{ session['user']['username'] }}</span>
+        <a href="/logout"><button class="btn btn-cyber-red"
+                style="padding: 5px 15px; font-size: 14px;">LOGOUT</button></a>
+        {% else %}
+        <a href="/login"><button class="btn btn-cyber-green"
+                style="padding: 5px 15px; font-size: 14px;">LOGIN</button></a>
+        <a href="/register"><button class="btn"
+                style="padding: 5px 15px; font-size: 14px; border: 1px solid var(--primary-purple); margin-left: 10px;">JOIN</button></a>
+        {% endif %}
+    </div>
+
     <h1>🏆 LEADERBOARD 🏆</h1>
     <p class="subtitle">TOP SCORERS HALL OF FAME</p>
 
@@ -84,6 +97,18 @@
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('Bullet_Hell')">Bullet Hell</button>
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('Lottery')">Lottery</button>
     </div>
+
+    {% if not session.user %}
+    <div style="text-align: center; margin-bottom: 20px;">
+        <p class="warning"
+            style="font-size: 1.1rem; border: 1px solid var(--danger-red); display: inline-block; padding: 10px 20px; border-radius: 8px; background: rgba(50, 0, 0, 0.5);">
+            ⚠️ <a href="/register" style="color: var(--primary-cyan); text-decoration: underline;">創建</a>
+            或
+            <a href="/login" style="color: var(--primary-cyan); text-decoration: underline;">登入</a>
+            帳號以記錄你的成績！
+        </p>
+    </div>
+    {% endif %}
 
     <div class="leaderboard-container game-card">
         <h2 id="current-game-title" style="text-align: center; color: var(--primary-purple); margin-bottom: 20px;">
@@ -148,8 +173,16 @@
             }
         }
 
+        // Read URL param
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameParam = urlParams.get('game');
+
         // Default load
-        loadLeaderboard('snake');
+        if (gameParam) {
+            loadLeaderboard(gameParam);
+        } else {
+            loadLeaderboard('snake');
+        }
     </script>
 </body>
 

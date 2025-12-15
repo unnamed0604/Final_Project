@@ -189,6 +189,19 @@ button[id="start-btn"]:hover {
     box-shadow: 0 0 20px var(--danger-red);
 }
 
+/* Purple Cyber Button (Leaderboard) */
+.btn-cyber-purple {
+    border-color: var(--primary-purple) !important;
+    color: var(--primary-purple) !important;
+    box-shadow: 0 0 10px rgba(188, 19, 254, 0.2);
+}
+
+.btn-cyber-purple:hover {
+    background: var(--primary-purple) !important;
+    color: #fff !important;
+    box-shadow: 0 0 20px var(--primary-purple);
+}
+
 /* Game Canvas Container */
 #game-container {
     background: rgba(0, 0, 0, 0.8);

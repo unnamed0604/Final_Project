@@ -93,6 +93,13 @@ function keyDownHandler(e) {
         leftPressed = true;
     } else if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault(); // 防止網頁捲動
+
+        // 如果遊戲結束，按下空白鍵重新開始
+        if (isGameOver) {
+            location.reload();
+            return;
+        }
+
         if (ball.isAttached) {
             ball.isAttached = false;
             // 發射時給予隨機一點的水平速度，避免死板
@@ -221,7 +228,7 @@ function drawWaveInfo() {
 
 function update() {
     if (isGameOver) {
-        drawMessage("GAME OVER", "red", "Click Restart to play again");
+        drawMessage("GAME OVER", "red", "Press SPACE to Restart");
         return;
     }
 

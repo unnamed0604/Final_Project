@@ -34,6 +34,12 @@ const keys = {
 };
 
 document.addEventListener('keydown', (e) => {
+    // 遊戲結束時可以按空白鍵重開
+    if ((e.key === ' ' || e.key === 'Spacebar') && isGameOver) {
+        location.reload();
+        return;
+    }
+
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault(); // 防止網頁捲動
     }
@@ -278,6 +284,10 @@ function gameOver() {
     ctx.font = "30px Arial";
     ctx.fillStyle = "white";
     ctx.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 50);
+
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("Press SPACE to Restart", canvas.width / 2, canvas.height / 2 + 100);
 
     submitScore(score);
 }
