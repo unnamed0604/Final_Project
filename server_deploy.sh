@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PORT=5006
+PORT=5000
 BRANCH="main"
 
 echo "🚀 Starting Deployment on Port $PORT..."
