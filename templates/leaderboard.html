@@ -91,7 +91,7 @@
     <div class="game-selector">
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('snake')">Snake</button>
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('block')">Block Breaker</button>
-        <button class="btn btn-cyber-green" onclick="loadLeaderboard('dino')">Dino Run</button>
+        <button class="btn btn-cyber-green" onclick="loadLeaderboard('dino')">Block Run</button>
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('twister')">Finger Panic</button>
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('keyboard')">Keyboard Mania</button>
         <button class="btn btn-cyber-green" onclick="loadLeaderboard('Bullet_Hell')">Bullet Hell</button>
@@ -134,8 +134,19 @@
     </div>
 
     <script>
+        const gameDisplayNames = {
+            'snake': 'SNAKE',
+            'block': 'BLOCK BREAKER',
+            'dino': 'BLOCK RUN',
+            'twister': 'FINGER PANIC',
+            'keyboard': 'KEYBOARD MANIA',
+            'Bullet_Hell': 'BULLET HELL',
+            'Lottery': 'LOTTERY'
+        };
+
         async function loadLeaderboard(gameName) {
-            document.getElementById('current-game-title').innerText = gameName.toUpperCase().replace('_', ' ') + " RANKINGS";
+            const displayName = gameDisplayNames[gameName] || gameName.toUpperCase().replace('_', ' ');
+            document.getElementById('current-game-title').innerText = displayName + " RANKINGS";
             const tbody = document.getElementById('score-body');
             tbody.innerHTML = '<tr><td colspan="4">Loading...</td></tr>';
 
