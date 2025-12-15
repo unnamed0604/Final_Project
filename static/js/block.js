@@ -54,9 +54,34 @@ function initBricks() {
 }
 initBricks();
 
-// 監聽器 (已移除 Mouse 相關監聽)
 let rightPressed = false;
 let leftPressed = false;
+
+// --- 音效系統 (Web Audio API) ---
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+// 簡單的 8-bit 音效產生器
+function playSound(type, freq, duration) {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = type; // 'square', 'sawtooth', 'triangle', 'sine'
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+    // 音量包絡 (Envelope)
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
 
 document.addEventListener('keydown', keyDownHandler, false);
 document.addEventListener('keyup', keyUpHandler, false);
@@ -67,6 +92,7 @@ function keyDownHandler(e) {
     } else if (e.key === 'Left' || e.key === 'ArrowLeft') {
         leftPressed = true;
     } else if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault(); // 防止網頁捲動
         if (ball.isAttached) {
             ball.isAttached = false;
             // 發射時給予隨機一點的水平速度，避免死板
@@ -130,9 +156,22 @@ function collisionDetection() {
                 if (ball.x > b.x && ball.x < b.x + brickWidth && ball.y > b.y && ball.y < b.y + brickHeight) {
                     ball.dy = -ball.dy;
                     b.status = 0;
-                    score += wave; // 分數根據目前 Wave 決定
+                    score += wave;
                     scoreElement.innerText = score;
                     activeBricks--;
+
+                    // 音效: 高音短促 (8-bit style)
+                    playSound('square', 600 + Math.random() * 200, 0.1);
+
+                    // 難度提升：每打掉一個磚塊，球速增加，擋板也變快
+                    ball.speed += 0.15; // 球速微幅增加
+                    paddle.speed += 0.1; // 擋板速度微幅增加 (跟上球速)
+
+                    // 重新正規化速度向量 (確保 dx, dy 符合新的 speed)
+                    // 保持原本的方向 (Angle)，但長度變長
+                    let angle = Math.atan2(ball.dy, ball.dx);
+                    ball.dx = Math.cos(angle) * ball.speed;
+                    ball.dy = Math.sin(angle) * ball.speed;
                 }
             }
         }
@@ -142,6 +181,9 @@ function collisionDetection() {
     if (activeBricks === 0) {
         // 下一波
         wave++;
+        // 過關獎勵：稍微重置一點速度 (可選，或繼續變快)
+        // 為了避免過快，每波結束可以稍微降一點點回氣，或者保持
+        // 這裡選擇不重置
         resetGameForNextWave();
     }
 }
@@ -154,8 +196,8 @@ function resetGameForNextWave() {
     // 重生磚塊
     initBricks();
 
-    // 可選：每波增加一點球速
-    // ball.speed += 0.5;
+    // Wave 增加時的額外提速 (可選)
+    // ball.speed += 0.5; 
 }
 
 function drawMessage(text, color, subtext) {
@@ -197,23 +239,45 @@ function update() {
             ball.dx = -ball.dx;
         }
         // 碰到頂部
+        // 碰到頂部
         if (ball.y + ball.dy < ball.radius) {
             ball.dy = -ball.dy;
-        } else if (ball.y + ball.dy > canvas.height - ball.radius) {
-            // 碰到擋板
-            if (ball.x > paddle.x && ball.x < paddle.x + paddle.width && ball.dy > 0) {
-                // 強制向上反彈，避免卡住
-                ball.dy = -Math.abs(ball.dy);
+        }
+        // 碰到擋板 (Paddle Collision)
+        // 判斷球的下緣是否接觸到擋板的上緣
+        else if (
+            ball.dy > 0 && // 球必須是向下掉
+            ball.y + ball.radius >= paddle.y && // 球碰到了擋板高度
+            ball.y - ball.radius <= paddle.y + paddle.height && // 球還沒完全穿過擋板
+            ball.x + ball.radius >= paddle.x && // 水平範圍判定
+            ball.x - ball.radius <= paddle.x + paddle.width
+        ) {
+            // 強制設定球的位置在擋板上方，避免黏住或穿透
+            ball.y = paddle.y - ball.radius;
 
-                // 增加一點難度：根據擊球點改變 X 軸速度
-                const hitPoint = ball.x - (paddle.x + paddle.width / 2);
-                ball.dx = hitPoint * (0.15 * (ball.speed / 4)); // 稍微調整係數以適應不同速度
-            } else if (ball.y - ball.radius > canvas.height) {
-                // 掉到底部
-                isGameOver = true;
-                // Submit Score
-                submitScore('block', score);
-            }
+            // --- 新的反彈物理 ---
+            // 透過擊球點決定反彈角度 (Rebound Angle)，而非直接加減 DX
+            // 1. 計算擊球點相對於板子中心的偏移量 (範圍 -1 ~ 1)
+            let center = paddle.x + paddle.width / 2;
+            let hitPoint = ball.x - center;
+            let normalizeHit = hitPoint / (paddle.width / 2);
+
+            // 2. 決定反彈角度 (最大 60度 = PI/3)
+            let bounceAngle = normalizeHit * (Math.PI / 3);
+
+            // 3. 根據角度重新計算向量，確保合速度恆等於 ball.speed
+            // 注意：這裡必須強制設為往上 (-y)，不能用 atan2(原本的向下向量)
+            ball.dx = ball.speed * Math.sin(bounceAngle);
+            ball.dy = -ball.speed * Math.cos(bounceAngle);
+
+            // 音效: 低音 (Bounce)
+            playSound('triangle', 300, 0.15);
+        }
+        // 掉到底部 (Game Over)
+        else if (ball.y - ball.radius > canvas.height) {
+            isGameOver = true;
+            // Submit Score
+            submitScore('block', score);
         }
 
         ball.x += ball.dx;

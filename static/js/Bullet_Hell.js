@@ -34,6 +34,9 @@ const keys = {
 };
 
 document.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault(); // 防止網頁捲動
+    }
     if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
 });
 

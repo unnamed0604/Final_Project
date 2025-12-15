@@ -19,9 +19,9 @@
         #game-container {
             /* Constrain container size */
             width: 80vh;
-            height: 80vh;
+            height: 600px;
             max-width: 800px;
-            max-height: 800px;
+            max-height: 600px;
             aspect-ratio: 1 / 1;
         }
     </style>
@@ -35,7 +35,7 @@
             <div class="hud-item hud-time">TIME: <span id="time">00:00</span></div>
         </div>
         <!-- Canvas resize logic inside JS usually handles full container size, but CSS helps -->
-        <canvas id="gameCanvas" width="800" height="800"
+        <canvas id="gameCanvas" width="800" height="600"
             style="width: 100%; height: 100%; object-fit: contain;"></canvas>
     </div>
 
