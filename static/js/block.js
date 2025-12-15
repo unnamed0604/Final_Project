@@ -119,8 +119,8 @@ function keyDownHandler(e) {
 
         if (ball.isAttached) {
             ball.isAttached = false;
-            // 發射時給予隨機一點的水平速度，避免死板
-            ball.dx = ball.speed * (Math.random() < 0.5 ? 1 : -1);
+            // 固定朝右發射，避免左側無腦刷分
+            ball.dx = ball.speed;
             ball.dy = -ball.speed;
         }
     }
